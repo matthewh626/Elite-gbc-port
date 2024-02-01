@@ -1,0 +1,21 @@
+18x13 tile area, 234 tiles, 8x8 pixles per tile, 1 bite per pixle, 8 bytes per tile, 1872 bytes per frame
+2280 fast cycles of vblank per frame
+
+each bank of vram holds an area of 16X8 tiles = 256 tiles, 2 banks of vram = 1028 tiles leaving 278 tiles for the window with no vram bufer or 44 with 
+one vram buffer (for bg only, 22 if window is buffered too)
+20-13 = 7, 18*7 = 126 tiles of map area, 35 if 18*6 are 4 way symetric, 9 spare, could be used for buttons
+this would leave 2 banks of 128 tiles for objects, these could be used for text, though this use would be difficult with the 40 sprite limit the tiles for the second bank could be text and menu ui and have rLCDC.4 be 0 and the rVBK be 1 when in menus and keep the object area of bank 0 for hud elements like moving guages and radar flags
+
+vram use map
+------------------------------------------------|
+bank 0         			| bank 1				|
+------------------------------------------------|
+$8000 hud objects		| menu window tilles/	|
+$87FF space dust?		| menu objects			|
+------------------------------------------------|
+$8800 BG tiles			| BG tiles				|
+$97E8 a buffer			| b buffer				|
+------------------------------------------------|
+$97E9 hud window		| unused				|
+$97FF tiles				|						|
+------------------------------------------------|
