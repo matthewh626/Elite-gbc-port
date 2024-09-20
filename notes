@@ -1,21 +1,53 @@
-18x13 tile area, 234 tiles, 8x8 pixles per tile, 1 bite per pixle, 8 bytes per tile, 1872 bytes per frame
-2280 fast cycles of vblank per frame
+the plan is to have the BG layer hold the vector graphics, the window layer hold the hud and the object layer to hold the radar flags, moving bars and possably some space dust or pre rendered projectiles for things like the players lazers and missiles as they would be viewed from much more limited angles
 
-each bank of vram holds an area of 16X8 tiles = 256 tiles, 2 banks of vram = 1028 tiles leaving 278 tiles for the window with no vram bufer or 44 with 
-one vram buffer (for bg only, 22 if window is buffered too)
+each bank of vram holds an area of 16X8 tiles = 256 tiles, 2 banks of vram = 1028 tiles leaving 278 tiles for the window with no vram bufer or 44 with one vram buffer (for bg only, 22 if window is buffered too)
 20-13 = 7, 18*7 = 126 tiles of map area, 35 if 18*6 are 4 way symetric, 9 spare, could be used for buttons
 this would leave 2 banks of 128 tiles for objects, these could be used for text, though this use would be difficult with the 40 sprite limit the tiles for the second bank could be text and menu ui and have rLCDC.4 be 0 and the rVBK be 1 when in menus and keep the object area of bank 0 for hud elements like moving guages and radar flags
+
+screen map: flight (20x18 tiles)
+
+            <- 18 tiles ->
+________________________________________
+|                                      |
+|                                      | ___
+|                                      | / \
+|                                      |  |
+|                                      | 12 tiles
+|     flight view                      |  |
+|     vector graphics                  | \_/
+|     on the background layer          | 
+|     (colour TBD)                     | total of 240 tiles
+|                                      |
+|                                      |
+|______________________________________|
+|  first row: NES style hud buttons    | total of 120 tiles
+|                                      | ___
+|  radar: grid on window layer         | /|\
+|         flags are objects            | 6 tiles
+|                                      | \|/
+|______________________________________| ---
 
 vram use map
 ------------------------------------------------|
 bank 0         			| bank 1				|
 ------------------------------------------------|
-$8000 hud objects		| menu window tilles/	|
-$87FF space dust?		| menu objects			|
+$8000 hud objects		| menu window tiles/	|
+$87FF space dust? VFX?	| menu objects			|
 ------------------------------------------------|
 $8800 BG tiles			| BG tiles				|
 $97E8 a buffer			| b buffer				|
 ------------------------------------------------|
-$97E9 hud window		| unused				|
-$97FF tiles				|						|
+$97E9 hud window tiles  | menu text				|
+$97FF 					|						|
 ------------------------------------------------|
+
+memory use table
+$C000-$C008 test point list, each point is 2 bytes 1 for x and one for y
+$C009-$C010 pixel draw working mem
+$C011 graphics buffer
+
+alternate buffering method, could also use bg pallets to handle the buffering which would free up $8800-$97E8 on bank 1 this room could be used for more detailed tile sets for the window which gives more room for both the hud and menus, which could increase quality and allow for improvements like sub tile lettering to allow for more compact text and more text on screen.
+
+for the line drawing ill use the background cordiates, as a test im goign to make a table of lines at the begining of Wram and try and render them to the backgound, thne ill try to animate it a bit by moving the points around.
+
+for tile allocation for now im going to make a bit list where for some intiger number of tiles ill use a 0 to repesent an allocated tile and a 1 for unallocated tiles, then ill copy it into a regester then bit shift it left untill the carry flag gets set while counting in another regester and the counted value (+ some offset) will be the first available tile, this could be a candidate for going into h-ram as it will be needed in both tile allocation and cleanup
