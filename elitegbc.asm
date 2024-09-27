@@ -63,35 +63,45 @@ RET
 SECTION "rendering", ROM0
 
 DrawLine: ;takes input with hl, will try to read one endpoint pair from memory
-ld a, [hl]
+ld a, [hl] ;hl points to x1
 inc l
 inc l
-cp a, [hl]
-jr z, .horisontal
+cp a, [hl] ;hl points to x2
+jr z, .vertical
 dec l
-ld a, [hl]
+ld a, [hl] ;hl points to y1
 inc l
 inc l
-cp a, [hl]
+cp a, [hl] ;hl points to y2
 jr z, .vertical
 jr .angled
-.horisontal
+.vertical
 dec l
-ld a, [hl]
+ld a, [hl] ;hl points to y1
 inc l
 inc l
-cp a, [hl]
-jr !z, .horLend
+cp a, [hl] ;hl points to y2
+jr !z, .verLine
 dec l
 dec l
-ld c, [hl]
+ld c, [hl] ;hl points to y1
 dec l
-ld b, [hl]
+ld b, [hl] ;hl points to x1
+call DrawPixel ; draws the first point as a single pixel then returns, as the line has 0 length (x1=x2 & y1=y2)
+RET
+.verLine
+dec l
+dec l
+ld c, [hl] ;hl points to y1
+dec l
+ld b, [hl] ;hl points to x1
+PUSH bc
 call DrawPixel
-.horLend
+POP bc
+ 
 RET
 
-.vertical
+.horisontal
 
 .angled
 
