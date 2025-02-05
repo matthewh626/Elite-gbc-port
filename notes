@@ -42,9 +42,10 @@ $97FF 					|						|
 ------------------------------------------------|
 
 memory use table
-$C000-$C008 test point list, each point is 2 bytes 1 for x and one for y
-$C009-$C019 line draw working mem
-$C020 graphics buffer
+$C000-$C01F test point list, each point is 2 bytes 1 for x and one for y
+--$C009-$C019 line draw working mem-- this is getting moved to hram for speed reasons
+$FF00-$FF06 line draw working memory
+$C010 graphics buffer
 
 alternate buffering method, could also use bg pallets to handle the buffering which would free up $8800-$97E8 on bank 1 this room could be used for more detailed tile sets for the window which gives more room for both the hud and menus, which could increase quality and allow for improvements like sub tile lettering to allow for more compact text and more text on screen.
 
@@ -54,4 +55,4 @@ for tile allocation for now im going to make a bit list where for some intiger n
 
 Bresenhams algorothm implementiation, for the drawing of angled lines im going to try and implement bresenhams algorithm, from the wikipedia page for it (yeah im using wikipedia shoot me) i will be using the version described that uses 2 diffrent subroutenes and flips the inputs when needed. Im trying to figure out where to put the vareables of the psudo code from the wiki id prefer to only use regesters if possable i could keep hl pointing to the input points, but i always end up 1 regester short, so ill store all the relevent values in the pixel draw working mem area.
 	memory use;
-	b=x c=y $C009=x0 $C010=y0 $C011=x1 $C012=y1 $C013=dx $C014=dy $C015=D
+	b=x c=y $ff00=x0 $ff01=y0 $FF02=x1 $FF03=y1 $FF04=dx $CFF05=dy $FF06=D

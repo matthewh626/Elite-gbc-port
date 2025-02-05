@@ -152,25 +152,25 @@ jr :-
 jr :--
 : RET
 .angled
-ld a, [hl] 		;at this point its loading the values from the input area in memory into the linedrawing working memory ($C009 - $C015)
-ld [$C012], a 	;because hl is left pointing to the last value of the input after the previous checks the values are loaded last to first
+ld a, [hl] 		;at this point its loading the values from the input area in memory into the linedrawing working memory ($FF00 - $FF06)
+ldh [$03], a 	;because hl is left pointing to the last value of the input after the previous checks the values are loaded last to first
 dec hl
 ld a, [hl]
-ld [$C011], a
+ldh [$02], a
 dec hl
 ld a, [hl]
-ld [$C010], a
+ldh [$01], a
 dec hl
 ld a, [hl]
-ld [$C009], a
-ld a, [$C011]
+ldh [$00], a
+ldh a, [$02]
 ld b, a
-ld a, [$C009]
+ldh a, [$00]
 sub b
 ld b, a
-ld a, [$C012]
+ldh a, [$03]
 ld c, a
-ld a, [$C010]
+ldh a, [$01]
 sub c
 sub b ;the C flag now contain abs(y1 - y0) < abs(x1 - x0)
 jp c, shallow
