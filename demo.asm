@@ -269,6 +269,7 @@ call MaskGen
 xor a, [hl]
 ld [hl], a
 RET
+
 GetFreeTile:
 RET
 
