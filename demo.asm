@@ -28,6 +28,18 @@ dec d
 ld a, $20
 call AddtoHl
 jr !z, :-- ;the BG tile map should now have a 18x12 area where each position uses subsequent tile ids
+ld hl, $c000; cleaning up some ram just for development (so i can fucking see whats happening)
+: ld a, 0
+ld [hl+], a
+ld a, h
+cp a, $d0
+jr !z, :-
+ld hl, $ff80
+: ld a, 0
+ld [hl+], a
+ld a, l
+cp a, $fe
+jr !z, :-
 ld hl, $ff68 ;initalising the pallet
 ld [hl], %10000000
 ld hl, $ff69
@@ -38,7 +50,7 @@ ld [hl], $03
 ld [hl], $00
 ld [hl], $7c
 ld [hl], $00
-ld [hl], $00 ;first 4 colours of the pallet should now be red, green, blue and white
+ld [hl], $00 ;first 4 colours of the pallet should now be red, green, blue and black
 ld hl, $C000 ;loading the 2 test points
 ld [hl], 48
 inc hl
@@ -102,6 +114,11 @@ ld a, $FF
 xor h
 ld h, a
 inc hl
+RET
+
+TwosCompA: ;uses just a
+xor a, $ff
+inc a
 RET
 
 SECTION "rendering", ROM0
@@ -193,47 +210,53 @@ jr c, .shallow
 ldh a, [$FF82]
 ld hl, $FF80
 cp a, [hl] 
-jr c, :+
+jr c, .shallowpos
+.shallowneg
 
-:
 .shallowpos
-ldh a, [$FF82]
+ldh a, [$ff82] 
+ld b, 0
+ld c, a
+ldh a, [$ff80]
 ld h, 0
 ld l, a
 call TwosCompHL
-ld b, h
-ld c, l
-ldh a, [$FF80]
-ld h, 0
-ld l, a
 add hl, bc
 ld a, h
-ldh [$FF84], a
+ldh [$ff84], a
 ld a, l
-ldh [$FF85], a ;all this from the shallowpos label to do xd = x1 - x0
-ldh a, [$FF83]
+ldh [$ff85], a ; dx = x1 - x0
+ldh a, [$ff83] 
+ld b, 0
+ld c, a
+ldh a, [$ff81]
 ld h, 0
 ld l, a
 call TwosCompHL
-ld b, h
-ld c, l
-ldh a, [$FF81]
-ld h, 0
-ld l, a
 add hl, bc
 ld a, h
-ldh [$FF86], a
+ldh [$ff86], a
 ld a, l
-ldh [$FF87], a ;dy = y1 - y0
-add hl, hl
+ldh [$ff87], a ; dy = y1 - y0
 ld b, h
 ld c, l
-ldh a, [$FF84]
+add hl, bc ; hl = 2*dy
+ld b, h
+ld c, l
+ldh a, [$ff84]
 ld h, a
-ldh a, [$FF85]
+ldh a, [$ff85]
 ld l, a
-call TwosCompHL
+call TwosCompHL ; hl = -dx, bc = 2*dy
 add hl, bc
+ld a, h
+ldh [$ff88], a
+ld a, l
+ldh [$ff89], a ; D = 2*dy - dx
+ldh a, [$ff81]
+ld c, a ; y = y0
+ldh a, [$ff80]
+ld b, a ; x = x0, finaly ready for loop
 
 DrawPixel: ;takes input with b and c regesters
 ld d, b
