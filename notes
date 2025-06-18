@@ -58,6 +58,7 @@ Bresenhams algorothm implementiation, for the drawing of angled lines im going t
 	b=x c=y $FF80=x0 $FF81=y0 $FF82=x1 $FF83=y1 $FF84=dx $FF85=dy $FF86=D
 	
 took me FAR too long to get my head around 2s compliment but as long as i just replace the D > 0 with a D < 128 i basicaly dont have to worry about the negitive numbers they just work, the only complication still to figure out, is the limit of 64 px horisontal displacement this places on drawn lines, this could be solved by using recoursive bisection. by halving the line and drawing it in two parts, this would use more memmory as you would need to store the midpoint, although it might be possable to use the stack to do this, it is also possable to handle this when queing the lines to be drawn as opposed to wnen actualy trying to draw the line. Im going to experement in another file to try and handle this using 16 aririthmatic as ive seen opcodes that can performe 16 bit arithmatic with the result landing in hl
-
-ok im going to try to make a tech demo of the sidewinder rotating in a main menu kind of way, hopefully this will prove to myself that the overall project is doable (or not)
-
+	
+ok im going to try to make a tech demo of the sidewinder rotating in a main menu kind of way, hopefully this will prove to myself that the overall project is doable (or not) for ythe demo im going to try and use the 16-bit arithmetic version of the line drawer
+	demo memory use;
+	b=x c=y $FF80=x0 $FF81=y0 $FF82=x1 $FF83=y1 $FF84&5=dx $FF86&7=dy $FF88&9=D
