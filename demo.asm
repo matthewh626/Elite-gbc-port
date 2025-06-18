@@ -7,7 +7,6 @@ SECTION "Header", ROM0[$100]
 	ds $150 - @, 0
 
 EntryPoint:
-
 SECTION "init", ROM0
 ld hl, $ffff 
 ld [hl], %00000001 
@@ -117,7 +116,7 @@ inc hl
 RET
 
 TwosCompA: ;uses just a
-xor a, $ff
+cpl
 inc a
 RET
 
@@ -257,6 +256,10 @@ ldh a, [$ff81]
 ld c, a ; y = y0
 ldh a, [$ff80]
 ld b, a ; x = x0, finaly ready for loop
+: push bc ; start of loop
+call DrawPixel
+pop bc
+
 
 DrawPixel: ;takes input with b and c regesters
 ld d, b
