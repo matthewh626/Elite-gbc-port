@@ -9,7 +9,6 @@ SECTION "Header", ROM0[$100]
 EntryPoint:
 
 SECTION "init", ROM0
-EntryPoint:
 ld hl, $ffff 
 ld [hl], %00000001 
 halt
@@ -48,6 +47,8 @@ inc hl
 ld [hl], 137
 inc hl
 ld [hl], 4 ;points loaded
+ld hl, $C000
+call DrawLine
 jp End
 
 SECTION "utils", ROM0
@@ -166,70 +167,70 @@ jr :--
 : RET
 .angled  	;memory addresses (the screen cords are unsigned 8 bit, calcualtion vars are little endian signed 16 bit)
 		; b=x c=y $FF00=x0 $FF01=y0 $FF02=x1 $FF03=y1 $FF04-5=dx $FF06-7=dy $FF08-9=D
-ld a, [hld] 	;at this point its loading the values from the input area in memory into the linedrawing working memory ($FF00 - $FF09)
-ldh [$FF03], a 	;because hl is left pointing to the last value of the input after the previous checks the values are loaded last to first
+ld a, [hld] 	;at this point its loading the values from the input area in memory into the linedrawing working memory ($FF80 - $FF89)
+ldh [$FF83], a 	;because hl is left pointing to the last value of the input after the previous checks the values are loaded last to first
 ld a, [hld]
-ldh [$FF02], a
+ldh [$FF82], a
 ld a, [hld]
-ldh [$FF01], a
+ldh [$FF81], a
 ld a, [hl]
-ldh [$FF00], a
+ldh [$FF80], a
 ld a, [hl]
-ldh [$FF00], a
-ldh a, [$FF02]
+ldh [$FF80], a
+ldh a, [$FF82]
 ld b, a
-ldh a, [$FF00]
+ldh a, [$FF80]
 sub b
 ld b, a
-ldh a, [$FF03]
+ldh a, [$FF83]
 ld c, a
-ldh a, [$FF01]
+ldh a, [$FF81]
 sub c
 sub b ;the C flag now contain abs(y1 - y0) < abs(x1 - x0)
-jr c, shallow
-jr steep
+jr c, .shallow
+
 .shallow:
-ldh a, [$FF02]
-ld hl, $FF00
+ldh a, [$FF82]
+ld hl, $FF80
 cp a, [hl] 
 jr c, :+
 
 :
 .shallowpos
-ldh a, [$FF02]
+ldh a, [$FF82]
 ld h, 0
 ld l, a
 call TwosCompHL
 ld b, h
 ld c, l
-ldh a, [$FF00]
+ldh a, [$FF80]
 ld h, 0
 ld l, a
 add hl, bc
 ld a, h
-ldh [$FF04], a
+ldh [$FF84], a
 ld a, l
-ldh [$FF05], a ;all this from the shallowpos label to do xd = x1 - x0
-ldh a, [$FF03]
+ldh [$FF85], a ;all this from the shallowpos label to do xd = x1 - x0
+ldh a, [$FF83]
 ld h, 0
 ld l, a
 call TwosCompHL
 ld b, h
 ld c, l
-ldh a, [$FF01]
+ldh a, [$FF81]
 ld h, 0
 ld l, a
 add hl, bc
 ld a, h
-ldh [$FF06], a
+ldh [$FF86], a
 ld a, l
-ldh [$FF07], a ;dy = y1 - y0
+ldh [$FF87], a ;dy = y1 - y0
 add hl, hl
 ld b, h
 ld c, l
-ldh a, [$FF04]
+ldh a, [$FF84]
 ld h, a
-ldh a, [$FF05]
+ldh a, [$FF85]
 ld l, a
 call TwosCompHL
 add hl, bc
@@ -282,4 +283,4 @@ RET
 End:
 ld hl, $ffff 
 ld [hl], %00000000 
-halt`
+halt
