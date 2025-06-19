@@ -42,7 +42,7 @@ $97FF 			|			|
 ------------------------------------------------|
 
 memory use table
-$C000-$C01F test point list, each point is 2 bytes 1 for x and one for y
+$C000-$C01F test point list, each point is 2 bytes 1 for x and one for y. lines are processesed as point pairs, these must be stored such that x0 < x1
 --$C009-$C019 line draw working mem-- this is getting moved to hram for speed reasons
 $FF80-$FF86 line draw working memory
 $C020 graphics buffer
