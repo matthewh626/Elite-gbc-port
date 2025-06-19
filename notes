@@ -45,7 +45,7 @@ memory use table
 $C000-$C01F test point list, each point is 2 bytes 1 for x and one for y
 --$C009-$C019 line draw working mem-- this is getting moved to hram for speed reasons
 $FF80-$FF86 line draw working memory
-$C010 graphics buffer
+$C020 graphics buffer
 
 alternate buffering method, could also use bg pallets to handle the buffering which would free up $8800-$97E8 on bank 1 this room could be used for more detailed tile sets for the window which gives more room for both the hud and menus, which could increase quality and allow for improvements like sub tile lettering to allow for more compact text and more text on screen.
 
