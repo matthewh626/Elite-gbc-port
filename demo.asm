@@ -2,12 +2,12 @@ INCLUDE "hardware.inc"
 
 SECTION "Header", ROM0[$100]
 
-	jp EntryPoint
+	jp EntryPoint;
 
 	ds $150 - @, 0
 
-EntryPoint:
 SECTION "init", ROM0
+EntryPoint:
 ld hl, $ffff 
 ld [hl], %00000001 
 halt
