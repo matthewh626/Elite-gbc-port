@@ -90,7 +90,7 @@ sub 4 ; Check if in high or low nibble
 	; offset to generate a carry as needed.
 	add a, -2
 	adc a, 3
-	swap a ; Switch to the high nibble, though
+	swap a ; Switch to the high nibble, though 
 .fixThree
 	; At this point, both inputs are identical, ignoring the nibble swapping.
 	; I will describe the process for the low nibble, but it works similarly for the high one.
@@ -259,7 +259,44 @@ ld b, a ; x = x0, finaly ready for loop
 : push bc ; start of loop
 call DrawPixel
 pop bc
-
+ldh a, [$ff88] ; start of if block 
+bit 7, a
+jr z, :+
+ldh a, [$ff89]
+cp a, 0
+jr z, :+ ; first jump is branching on D < 0 second is branching on D = 0, if neather are taken then D > 0. end of if block check
+inc c ; y = y + 1
+ldh a, [$ff84]
+ld h, a
+ldh a, [$ff85]
+ld l, a
+ld d, h
+ld e, l
+add hl, de
+call TwosCompHL
+ldh a, [$ff88]
+ld d, a
+ldh a, [$ff89]
+ld e, a
+add hl, de ; D = D - 2*dx
+: ; end of if block 
+ldh a, [$ff86]
+ld h, a
+ldh a, [$ff57]
+ld l, a
+ld d, h
+ld e, l
+add hl, de
+ldh a, [$ff88]
+ld d, a
+ldh a, [$ff89]
+ld e, a
+add hl, de ; D = D + 2*dy
+inc b
+ldh a, [$ff82]
+cp a, b
+jr !c, :--
+RET
 
 DrawPixel: ;takes input with b and c regesters
 ld d, b
