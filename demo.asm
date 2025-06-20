@@ -14,6 +14,9 @@ halt
 nop
 ld hl, $FF40
 ld [hl], %00000000
+ld hl, $ff4d
+set 0, [hl]
+stop
 ld hl, $9800 ;initalsing BG tilemap 
 ld b, 0
 ld d, 12
