@@ -13,21 +13,21 @@ ld [hl], %00000001
 halt
 nop
 ld hl, $FF40
-ld [hl], %00000000
+ld [hl], %01101000
 ld hl, $ff4d
 set 0, [hl]
 stop
 ld hl, $9800 ;initalsing BG tilemap 
 ld b, 0
 ld d, 12
-: ld e, 18
+: ld e, 17
 : ld [hl], b
 inc hl
 inc b
 dec e
 jr !z, :-
 dec d
-ld a, $20
+ld a, 15
 call AddtoHl
 jr !z, :-- ;the BG tile map should now have a 18x12 area where each position uses subsequent tile ids
 ld hl, $c000; cleaning up some ram just for development (so i can fucking see whats happening)
@@ -54,15 +54,28 @@ ld [hl], $7c
 ld [hl], $00
 ld [hl], $00 ;first 4 colours of the pallet should now be red, green, blue and black
 ld hl, $C000 ;loading the 2 test points
+ld [hl], 4
+inc hl
 ld [hl], 48
 inc hl
-ld [hl], 57
+ld [hl], 48
 inc hl
-ld [hl], 137
-inc hl
-ld [hl], 4 ;points loaded
+ld [hl], 48 ;points loaded
 ld hl, $C000
 call DrawLine
+ld hl, $ff51
+ld [hl], $c0
+inc hl
+ld [hl], $20
+inc hl
+ld [hl], $80
+inc hl
+ld [hl], $00
+inc hl
+ld [hl], $8f
+nop
+ld hl, $FF40
+set 7, [hl]
 jp End
 
 SECTION "utils", ROM0
@@ -214,6 +227,7 @@ ld hl, $FF80
 cp a, [hl] 
 jr c, .shallowpos
 .shallowneg
+RET
 
 .shallowpos
 ldh a, [$ff82] 
@@ -329,6 +343,7 @@ rl a
 rl a ;a is now the starting address offset of the tile
 add a, c
 ld d, a ;d is now the address offset of the byte the pixel will go to, and e & c are now free
+rl d
 ld hl, $C020
 call AddtoHl
 ld a, b
