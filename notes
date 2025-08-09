@@ -1,3 +1,5 @@
+foreword: ok so this file is a bit of a rambling mess, it shoudl be read as being in *roughly* chronological order, by which i mean that lower text is usealy written later and that upper text is rarly eddited to agree with later changes.
+
 the plan is to have the BG layer hold the vector graphics, the window layer hold the hud and the object layer to hold the radar flags, moving bars and possably some space dust or pre rendered projectiles for things like the players lazers and missiles as they would be viewed from much more limited angles
 
 each bank of vram holds an area of 16X8 tiles = 256 tiles, 2 banks of vram = 1028 tiles leaving 278 tiles for the window with no vram bufer or 44 with one vram buffer (for bg only, 22 if window is buffered too)
@@ -62,3 +64,14 @@ took me FAR too long to get my head around 2s compliment but as long as i just r
 ok im going to try to make a tech demo of the sidewinder rotating in a main menu kind of way, hopefully this will prove to myself that the overall project is doable (or not) for ythe demo im going to try and use the 16-bit arithmetic version of the line drawer
 	demo memory use; (16 bit values are stored Big-endian)
 	b=x c=y $FF80=x0 $FF81=y0 $FF82=x1 $FF83=y1 $FF84&5=dx $FF86&7=dy $FF88&9=D
+
+ok in another addition to the file that gets the most updates; i think ive figured out how to make BOTH the tile data and tile map "thread-safe"? for lack of a better term. so the plan is that there will be 2 tile data buffers overlapping in vram by spliting the bitdepth between them, two tile map "frames" in the BG map and a "canvas" in wram where tile data is composed before being carved into tiles. the rendering pipeline should look something like this;
+
+the tile data for the frame will be drawn uncompressed into the canvas with a bit depth of 1, tile data will be generated based on this and kept probably nearby.
+the tile data will be written to vram, however both the a and b buffers exist in the same area of memmory, with the a buffer being the even addresses and the b buffer being the the odd address.
+the time map for the a buffer will be the top left 18x12 tiles and the tile map of the b buffer will be in the corisponding area directualy under it. 
+when after an unknown amount of time all the data nessary for the frame is loaded into vram two things happen to switch which buffer is being rendered.
+	firstly the BG pallet is changed between an 0100 pallet and an 0010 pallet where 0 is the desired "background" colour and 1 is the desireed "line" colour this is what selects which part of the overlapping tile data to use
+	secondly the SCY regester is moved to the other tile map area, selecting the tile map data that is to be used
+
+the idea behind this is that it compleatly avoids race conditions and allows graphics to be rendered at dynamic sub-refresh rate frame rates,
