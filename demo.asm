@@ -17,18 +17,18 @@ ld [hl], %01101000
 ld hl, $ff4d
 set 0, [hl]
 stop
-ld hl, $9800 ;initalsing BG tilemap 
+ld hl, $97f2 ;initalsing BG tilemap 
 ld b, 0
 ld d, 12
-: ld e, 17
+: ld e, 18
+ld a, 14
+call AddtoHl
 : ld [hl], b
 inc hl
 inc b
 dec e
 jr !z, :-
 dec d
-ld a, 15
-call AddtoHl
 jr !z, :-- ;the BG tile map should now have a 18x12 area where each position uses subsequent tile ids
 ld hl, $c000; cleaning up some ram just for development (so i can fucking see whats happening)
 : ld a, 0
@@ -45,22 +45,30 @@ jr !z, :-
 ld hl, $ff68 ;initalising the pallet
 ld [hl], %10000000
 ld hl, $ff69
-ld [hl], $1f
 ld [hl], $00
-ld [hl], $e0
-ld [hl], $03
 ld [hl], $00
-ld [hl], $7c
+ld [hl], $0c
+ld [hl], $07
 ld [hl], $00
-ld [hl], $00 ;first 4 colours of the pallet should now be red, green, blue and black
+ld [hl], $00
+ld [hl], $00
+ld [hl], $00 ;end of first pallet 
+ld [hl], $00
+ld [hl], $00
+ld [hl], $00
+ld [hl], $00
+ld [hl], $0c
+ld [hl], $07
+ld [hl], $00
+ld [hl], $00  ;pallets should be initalised, a buffer will use the first and the b pallet will use the second
 ld hl, $C000 ;loading the 2 test points
+ld [hl], 0
+inc hl
 ld [hl], 4
 inc hl
-ld [hl], 48
+ld [hl], 8
 inc hl
-ld [hl], 48
-inc hl
-ld [hl], 48 ;points loaded
+ld [hl], 4 ;points loaded
 ld hl, $C000
 call DrawLine
 ld hl, $ff51
@@ -318,12 +326,12 @@ RET
 DrawPixel: ;takes input with b and c regesters
 ld d, b
 ld e, c
-rr d
-rr d
-rr d
-rr e
-rr e
-rr e
+srl d
+srl d
+srl d
+srl e
+srl e
+srl e
 ld a, b
 and a, %00000111
 ld b, a
@@ -331,6 +339,8 @@ ld a, c
 and a, %00000111
 ld c, a ;b and c are now the sub-tile co-ords and d and e are the tile co-ords
 ld a, d
+cp a, 0
+jr z, .tileid
 .loop
 dec e
 jr z, .tileid
