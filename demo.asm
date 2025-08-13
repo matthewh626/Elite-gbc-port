@@ -227,14 +227,100 @@ ld c, a
 ldh a, [$FF81]
 sub c
 sub b ;the C flag now contain abs(y1 - y0) < abs(x1 - x0)
-jr c, .shallow
+ccf
+jp c, .steep
 
 .shallow:
 ldh a, [$FF82]
 ld hl, $FF80
 cp a, [hl] 
-jr c, .shallowpos
+jp c, .shallowpos
+
 .shallowneg
+ldh a, [$ff82] 
+ld b, 0
+ld c, a
+ldh a, [$ff80]
+ld h, 0
+ld l, a
+call TwosCompHL
+add hl, bc
+ld a, h
+ldh [$ff84], a
+ld a, l
+ldh [$ff85], a ; dx = x1 - x0
+ldh a, [$ff83] 
+ld b, 0
+ld c, a
+ldh a, [$ff81]
+ld h, 0
+ld l, a
+call TwosCompHL
+add hl, bc
+call TwosCompHL
+ld a, h
+ldh [$ff86], a
+ld a, l
+ldh [$ff87], a ; dy = y1 - y0
+ld b, h
+ld c, l
+add hl, bc ; hl = 2*dy
+ld b, h
+ld c, l
+ldh a, [$ff84]
+ld h, a
+ldh a, [$ff85]
+ld l, a
+call TwosCompHL ; hl = -dx, bc = 2*dy
+add hl, bc
+ld a, h
+ldh [$ff88], a
+ld a, l
+ldh [$ff89], a ; D = 2*dy - dx
+ldh a, [$ff81]
+ld c, a ; y = y0
+ldh a, [$ff80]
+ld b, a ; x = x0, finaly ready for loop
+: push bc ; start of loop
+call DrawPixel
+pop bc
+ldh a, [$ff88] ; start of if block 
+bit 7, a
+jr z, :+
+ldh a, [$ff89]
+cp a, 0
+jr z, :+ ; first jump is branching on D < 0 second is branching on D = 0, if neather are taken then D > 0. end of if block check
+dec c ; y = y - 1
+ldh a, [$ff84]
+ld h, a
+ldh a, [$ff85]
+ld l, a
+ld d, h
+ld e, l
+add hl, de
+call TwosCompHL
+ldh a, [$ff88]
+ld d, a
+ldh a, [$ff89]
+ld e, a
+add hl, de ; D = D - 2*dx
+: ; end of if block 
+ldh a, [$ff86]
+ld h, a
+ldh a, [$ff57]
+ld l, a
+ld d, h
+ld e, l
+add hl, de
+ldh a, [$ff88]
+ld d, a
+ldh a, [$ff89]
+ld e, a
+add hl, de ; D = D + 2*dy
+inc b
+ldh a, [$ff82]
+cp a, b
+jr !c, :--
 RET
 
 .shallowpos
@@ -319,6 +405,185 @@ ld e, a
 add hl, de ; D = D + 2*dy
 inc b
 ldh a, [$ff82]
+cp a, b
+jr !c, :--
+RET
+
+.steep:
+ldh a, [$FF82]
+ld hl, $FF80
+cp a, [hl] 
+jp c, .shallowpos
+
+.steepneg
+ldh a, [$ff83] 
+ld b, 0
+ld c, a
+ldh a, [$ff81]
+ld h, 0
+ld l, a
+call TwosCompHL
+add hl, bc
+call TwosCompHL
+ld a, h
+ldh [$ff86], a
+ld a, l
+ldh [$ff87], a ; dy = y1 - y0
+ldh a, [$ff82] 
+ld b, 0
+ld c, a
+ldh a, [$ff80]
+ld h, 0
+ld l, a
+call TwosCompHL
+add hl, bc
+ld a, h
+ldh [$ff84], a
+ld a, l
+ldh [$ff85], a ; dx = x1 - x0
+ld b, h
+ld c, l
+add hl, bc ; hl = 2*dx
+ld b, h
+ld c, l
+ldh a, [$ff84]
+ld h, a
+ldh a, [$ff85]
+ld l, a
+call TwosCompHL ; hl = -dx, bc = 2*dx
+add hl, bc
+ld a, h
+ldh [$ff88], a
+ld a, l
+ldh [$ff89], a ; D = 2*dx - dx
+ldh a, [$ff81]
+ld c, a ; y = y0
+ldh a, [$ff80]
+ld b, a ; x = x0, finaly ready for loop
+: push bc ; start of loop
+call DrawPixel
+pop bc
+ldh a, [$ff88] ; start of if block 
+bit 7, a
+jr z, :+
+ldh a, [$ff89]
+cp a, 0
+jr z, :+ ; first jump is branching on D < 0 second is branching on D = 0, if neather are taken then D > 0. end of if block check
+dec b ; x = x - 1
+ldh a, [$ff86]
+ld h, a
+ldh a, [$ff87]
+ld l, a
+ld d, h
+ld e, l
+add hl, de
+call TwosCompHL
+ldh a, [$ff88]
+ld d, a
+ldh a, [$ff89]
+ld e, a
+add hl, de ; D = D - 2*dx
+: ; end of if block 
+ldh a, [$ff84]
+ld h, a
+ldh a, [$ff55]
+ld l, a
+ld d, h
+ld e, l
+add hl, de
+ldh a, [$ff88]
+ld d, a
+ldh a, [$ff89]
+ld e, a
+add hl, de ; D = D + 2*dy
+inc b
+ldh a, [$ff83]
+cp a, b
+jr !c, :--
+RET
+
+.steeppos
+ldh a, [$ff83] 
+ld b, 0
+ld c, a
+ldh a, [$ff81]
+ld h, 0
+ld l, a
+call TwosCompHL
+add hl, bc
+ld a, h
+ldh [$ff86], a
+ld a, l
+ldh [$ff87], a ; dy = y1 - y0
+ldh a, [$ff82] 
+ld b, 0
+ld c, a
+ldh a, [$ff80]
+ld h, 0
+ld l, a
+call TwosCompHL
+add hl, bc
+ld a, h
+ldh [$ff84], a
+ld a, l
+ldh [$ff85], a ; dx = x1 - x0
+ld b, h
+ld c, l
+add hl, bc ; hl = 2*dx
+ld b, h
+ld c, l
+ldh a, [$ff84]
+ld h, a
+ldh a, [$ff85]
+ld l, a
+call TwosCompHL ; hl = -dx, bc = 2*dx
+add hl, bc
+ld a, h
+ldh [$ff88], a
+ld a, l
+ldh [$ff89], a ; D = 2*dx - dx
+ldh a, [$ff81]
+ld c, a ; y = y0
+ldh a, [$ff80]
+ld b, a ; x = x0, finaly ready for loop
+: push bc ; start of loop
+call DrawPixel
+pop bc
+ldh a, [$ff88] ; start of if block 
+bit 7, a
+jr z, :+
+ldh a, [$ff89]
+cp a, 0
+jr z, :+ ; first jump is branching on D < 0 second is branching on D = 0, if neather are taken then D > 0. end of if block check
+inc b ; x = x + 1
+ldh a, [$ff86]
+ld h, a
+ldh a, [$ff87]
+ld l, a
+ld d, h
+ld e, l
+add hl, de
+call TwosCompHL
+ldh a, [$ff88]
+ld d, a
+ldh a, [$ff89]
+ld e, a
+add hl, de ; D = D - 2*dx
+: ; end of if block 
+ldh a, [$ff84]
+ld h, a
+ldh a, [$ff55]
+ld l, a
+ld d, h
+ld e, l
+add hl, de
+ldh a, [$ff88]
+ld d, a
+ldh a, [$ff89]
+ld e, a
+add hl, de ; D = D + 2*dy
+inc b
+ldh a, [$ff83]
 cp a, b
 jr !c, :--
 RET
