@@ -31,16 +31,16 @@ ________________________________________
 
 vram use map
 ------------------------------------------------|
-bank 0			| bank 1		|
+bank 0					| bank 1				|
 ------------------------------------------------|
-$8000 hud objects	| menu window tiles/	|
-$87FF space dust? VFX?	| menu objects		|
+$8000 hud objects		| menu window tiles/	|
+$87FF space dust? VFX?	| menu objects			|
 ------------------------------------------------|
-$8800 BG tiles		| BG tiles		|
-$97E8 a buffer		| b buffer		|
+$8800 BG tiles			| BG tiles				|
+$97E8 a buffer			| b buffer				|
 ------------------------------------------------|
-$97E9 hud window tiles  | menu text		|
-$97FF 			|			|
+$97E9 hud window tiles  | menu text				|
+$97FF 					|						|
 ------------------------------------------------|
 
 memory use table
