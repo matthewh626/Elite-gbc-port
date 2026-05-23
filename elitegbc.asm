@@ -2,50 +2,88 @@ INCLUDE "hardware.inc"
 
 SECTION "Header", ROM0[$100]
 
-	jp EntryPoint
+	jp EntryPoint;
 
 	ds $150 - @, 0
 
 SECTION "init", ROM0
 EntryPoint:
-ld hl, $ffff 
+ld hl, rIE
 ld [hl], %00000001 
 halt
 nop
-ld hl, $FF40
-ld [hl], %00000000
-ld hl, $9800 ;initalsing BG tilemap 
+ld hl, rLCDC
+ld [hl], %01101000
+ld hl, rSPD
+set 0, [hl]
+halt
+ld hl, _SCRN0 ;initalsing BG tilemap 
 ld b, 0
 ld d, 12
 : ld e, 18
+ld a, 14
+call AddtoHl
 : ld [hl], b
 inc hl
 inc b
 dec e
 jr !z, :-
 dec d
-ld a, $20
-call AddtoHl
 jr !z, :-- ;the BG tile map should now have a 18x12 area where each position uses subsequent tile ids
-ld hl, $ff68 ;initalising the pallet
+ld hl, $c000; cleaning up some ram just for development (so i can fucking see whats happening)
+: ld a, 0
+ld [hl+], a
+ld a, h
+cp a, $d0
+jr !z, :-
+ld hl, _HRAM
+: ld a, 0
+ld [hl+], a
+ld a, l
+cp a, $fe
+jr !z, :-
+ld hl, rBGPI ;initalising the pallet
 ld [hl], %10000000
-ld hl, $ff69
-ld [hl], $1f
+ld hl, rBGPD
 ld [hl], $00
-ld [hl], $e0
-ld [hl], $03
 ld [hl], $00
-ld [hl], $7c
+ld [hl], $0c
+ld [hl], $07
 ld [hl], $00
-ld [hl], $00 ;first 4 colours of the pallet should now be red, green, blue and white
+ld [hl], $00
+ld [hl], $00
+ld [hl], $00 ;end of first pallet 
+ld [hl], $00
+ld [hl], $00
+ld [hl], $00
+ld [hl], $00
+ld [hl], $0c
+ld [hl], $07
+ld [hl], $00
+ld [hl], $00  ;pallets should be initalised, a buffer will use the first and the b pallet will use the second
 ld hl, $C000 ;loading the 2 test points
-ld [hl], 48
+ld [hl], 0
 inc hl
-ld [hl], 57
+ld [hl], 4
 inc hl
-ld [hl], 137
+ld [hl], 8
 inc hl
 ld [hl], 4 ;points loaded
+ld hl, $C000
+call DrawLine
+ld hl, rHDMA1
+ld [hl], $c0
+inc hl
+ld [hl], $20
+inc hl
+ld [hl], $80
+inc hl
+ld [hl], $00
+inc hl
+ld [hl], $8f
+nop
+ld hl, rLCDC
+set 7, [hl]
 jp End
 
 SECTION "utils", ROM0
@@ -76,7 +114,7 @@ sub 4 ; Check if in high or low nibble
 	; offset to generate a carry as needed.
 	add a, -2
 	adc a, 3
-	swap a ; Switch to the high nibble, though
+	swap a ; Switch to the high nibble, though 
 .fixThree
 	; At this point, both inputs are identical, ignoring the nibble swapping.
 	; I will describe the process for the low nibble, but it works similarly for the high one.
@@ -89,6 +127,31 @@ sub 4 ; Check if in high or low nibble
 	daa
 	rra ; Note that we need this specific rotate, since $A0 gets corrected to $00 with carry set
 	RET
+
+;code copied from the 16 bit linedrawing test
+TwosCompHL: ;uses hl and a
+ld a, $FF
+xor l
+ld l, a
+ld a, $FF
+xor h
+ld h, a
+inc hl
+RET
+
+TwosCompA: ;uses just a
+cpl
+inc a
+RET
+
+SECTION "rendering vars", HRAM
+x0:: db
+y0:: db
+x1:: db
+y1:: db
+dx:: dw
+dy:: dw
+Dif:: dw
 
 SECTION "rendering", ROM0
 
@@ -151,79 +214,397 @@ jr :-
 : inc b
 jr :--
 : RET
-.angled
-ld a, [hld] 	;at this point its loading the values from the input area in memory into the linedrawing working memory ($FF00 - $FF06)
-ldh [$FF03], a 	;because hl is left pointing to the last value of the input after the previous checks the values are loaded last to first
+.angled  	;this uses the vars from the rendering vars section
+ld a, [hld] 	;at this point its loading the values from the input area in memory into the linedrawing working memory ($FF80 - $FF89)
+ldh [y1], a 	;because hl is left pointing to the last value of the input after the previous checks the values are loaded last to first
 ld a, [hld]
-ldh [$FF02], a
+ldh [x1], a
 ld a, [hld]
-ldh [$FF01], a
+ldh [y0], a
 ld a, [hl]
-ldh [$FF00], a
-ldh a, [$FF02]
+ldh [x0], a
+ld a, [hl]
+ldh [x0], a
+ldh a, [x1]
 ld b, a
-ldh a, [$FF00]
+ldh a, [x0]
 sub b
 ld b, a
-ldh a, [$FF03]
+ldh a, [y1]
 ld c, a
-ldh a, [$FF01]
+ldh a, [y0]
 sub c
 sub b ;the C flag now contain abs(y1 - y0) < abs(x1 - x0)
-jr c, shallow
-jr steep
-.shallow
-ldh a, [$FF02]
-ld hl, $FF00
-cp a, [hl] 
-jr c, :+
+ccf
+jp c, .steep
 
-:
-.shallowpos
-ldh a, [$FF02]
-ld d, a
-ldh a, [$FF00]
-sub d
-ldh [$FF04], a
-ldh a, [$FF03]
-ld d, a
-ldh a, [$FF01]
-sub d
-ldh [$FF05], a
-rl a
-ld hl, $FF04
-sub a, [hl]
-ldh [$FF06], a
-ldh a, [$FF01]
-ld c, a
-ldh a, [$FF00]
-ld b, a
-: PUSH bc
-call DrawPixel
-POP bc
-ldh a, [$FF06]
-cp a, 128
-jr c, 
-inc c
+.shallow:
+ldh a, [x1]
+ld hl, x0
+cp a, [hl] 
+jp c, .shallowpos
 
 .shallowneg
+ldh a, [x1] 
+ld b, 0
+ld c, a
+ldh a, [x0]
+ld h, 0
+ld l, a
+call TwosCompHL
+add hl, bc
+ld a, h
+ldh [dx], a
+ld a, l
+ldh [dx+1], a ; dx = x1 - x0
+ldh a, [y1] 
+ld b, 0
+ld c, a
+ldh a, [y0]
+ld h, 0
+ld l, a
+call TwosCompHL
+add hl, bc
+call TwosCompHL
+ld a, h
+ldh [dy], a
+ld a, l
+ldh [dy+1], a ; dy = y1 - y0
+ld b, h
+ld c, l
+add hl, bc ; hl = 2*dy
+ld b, h
+ld c, l
+ldh a, [dx]
+ld h, a
+ldh a, [dx+1]
+ld l, a
+call TwosCompHL ; hl = -dx, bc = 2*dy
+add hl, bc
+ld a, h
+ldh [Dif], a
+ld a, l
+ldh [Dif+1], a ; Dif = 2*dy - dx
+ldh a, [y0]
+ld c, a ; y = y0
+ldh a, [x0]
+ld b, a ; x = x0, finaly ready for loop
+: push bc ; start of loop
+call DrawPixel
+pop bc
+ldh a, [Dif] ; start of if block 
+bit 7, a
+jr z, :+
+ldh a, [Dif+1]
+cp a, 0
+jr z, :+ ; first jump is branching on Dif < 0 second is branching on Dif = 0, if neather are taken then Dif > 0. end of if block check
+dec c ; y = y - 1
+ldh a, [dx]
+ld h, a
+ldh a, [dx+1]
+ld l, a
+ld d, h
+ld e, l
+add hl, de
+call TwosCompHL
+ldh a, [Dif]
+ld d, a
+ldh a, [Dif+1]
+ld e, a
+add hl, de ; Dif = Dif - 2*dx
+: ; end of if block 
+ldh a, [dy]
+ld h, a
+ldh a, [dy+1]
+ld l, a
+ld d, h
+ld e, l
+add hl, de
+ldh a, [Dif]
+ld d, a
+ldh a, [Dif+1]
+ld e, a
+add hl, de ; Dif = Dif + 2*dy
+inc b
+ldh a, [x1]
+cp a, b
+jr !c, :--
+RET
 
-.steep
+.shallowpos
+ldh a, [x1] 
+ld b, 0
+ld c, a
+ldh a, [x0]
+ld h, 0
+ld l, a
+call TwosCompHL
+add hl, bc
+ld a, h
+ldh [dx], a
+ld a, l
+ldh [dx+1], a ; dx = x1 - x0
+ldh a, [y1] 
+ld b, 0
+ld c, a
+ldh a, [y0]
+ld h, 0
+ld l, a
+call TwosCompHL
+add hl, bc
+ld a, h
+ldh [dy], a
+ld a, l
+ldh [dy+1], a ; dy = y1 - y0
+ld b, h
+ld c, l
+add hl, bc ; hl = 2*dy
+ld b, h
+ld c, l
+ldh a, [dx]
+ld h, a
+ldh a, [dx+1]
+ld l, a
+call TwosCompHL ; hl = -dx, bc = 2*dy
+add hl, bc
+ld a, h
+ldh [Dif], a
+ld a, l
+ldh [Dif+1], a ; Dif = 2*dy - dx
+ldh a, [y0]
+ld c, a ; y = y0
+ldh a, [x0]
+ld b, a ; x = x0, finaly ready for loop
+: push bc ; start of loop
+call DrawPixel
+pop bc
+ldh a, [Dif] ; start of if block 
+bit 7, a
+jr z, :+
+ldh a, [Dif+1]
+cp a, 0
+jr z, :+ ; first jump is branching on Dif < 0 second is branching on Dif = 0, if neather are taken then Dif > 0. end of if block check
+inc c ; y = y + 1
+ldh a, [dx]
+ld h, a
+ldh a, [dx+1]
+ld l, a
+ld d, h
+ld e, l
+add hl, de
+call TwosCompHL
+ldh a, [Dif]
+ld d, a
+ldh a, [Dif+1]
+ld e, a
+add hl, de ; Dif = Dif - 2*dx
+: ; end of if block 
+ldh a, [dy]
+ld h, a
+ldh a, [dy+1]
+ld l, a
+ld d, h
+ld e, l
+add hl, de
+ldh a, [Dif]
+ld d, a
+ldh a, [Dif+1]
+ld e, a
+add hl, de ; Dif = Dif + 2*dy
+inc b
+ldh a, [x1]
+cp a, b
+jr !c, :--
+RET
 
-.steeppos
+.steep:
+ldh a, [x1]
+ld hl, x0
+cp a, [hl] 
+jp c, .shallowpos
 
 .steepneg
+ldh a, [x1] 
+ld b, 0
+ld c, a
+ldh a, [y1]
+ld h, 0
+ld l, a
+call TwosCompHL
+add hl, bc
+call TwosCompHL
+ld a, h
+ldh [dy], a
+ld a, l
+ldh [dy+1], a ; dy = y1 - y0
+ldh a, [x1] 
+ld b, 0
+ld c, a
+ldh a, [x0]
+ld h, 0
+ld l, a
+call TwosCompHL
+add hl, bc
+ld a, h
+ldh [dx], a
+ld a, l
+ldh [dx+1], a ; dx = x1 - x0
+ld b, h
+ld c, l
+add hl, bc ; hl = 2*dx
+ld b, h
+ld c, l
+ldh a, [dx]
+ld h, a
+ldh a, [dx+1]
+ld l, a
+call TwosCompHL ; hl = -dx, bc = 2*dx
+add hl, bc
+ld a, h
+ldh [Dif], a
+ld a, l
+ldh [Dif+1], a ; Dif = 2*dx - dx
+ldh a, [y0]
+ld c, a ; y = y0
+ldh a, [x0]
+ld b, a ; x = x0, finaly ready for loop
+: push bc ; start of loop
+call DrawPixel
+pop bc
+ldh a, [Dif] ; start of if block 
+bit 7, a
+jr z, :+
+ldh a, [Dif+1]
+cp a, 0
+jr z, :+ ; first jump is branching on Dif < 0 second is branching on Dif = 0, if neather are taken then Dif > 0. end of if block check
+dec b ; x = x - 1
+ldh a, [dy]
+ld h, a
+ldh a, [dy+1]
+ld l, a
+ld d, h
+ld e, l
+add hl, de
+call TwosCompHL
+ldh a, [Dif]
+ld d, a
+ldh a, [Dif+1]
+ld e, a
+add hl, de ; Dif = Dif - 2*dx
+: ; end of if block 
+ldh a, [dx]
+ld h, a
+ldh a, [dx+1]
+ld l, a
+ld d, h
+ld e, l
+add hl, de
+ldh a, [Dif]
+ld d, a
+ldh a, [Dif+1]
+ld e, a
+add hl, de ; Dif = Dif + 2*dy
+inc b
+ldh a, [y1]
+cp a, b
+jr !c, :--
+RET
+
+.steeppos
+ldh a, [y1] 
+ld b, 0
+ld c, a
+ldh a, [y0]
+ld h, 0
+ld l, a
+call TwosCompHL
+add hl, bc
+ld a, h
+ldh [dy], a
+ld a, l
+ldh [dy+1], a ; dy = y1 - y0
+ldh a, [y1] 
+ld b, 0
+ld c, a
+ldh a, [x0]
+ld h, 0
+ld l, a
+call TwosCompHL
+add hl, bc
+ld a, h
+ldh [dx], a
+ld a, l
+ldh [dx+1], a ; dx = x1 - x0
+ld b, h
+ld c, l
+add hl, bc ; hl = 2*dx
+ld b, h
+ld c, l
+ldh a, [dx]
+ld h, a
+ldh a, [dx+1]
+ld l, a
+call TwosCompHL ; hl = -dx, bc = 2*dx
+add hl, bc
+ld a, h
+ldh [Dif], a
+ld a, l
+ldh [Dif+1], a ; Dif = 2*dx - dx
+ldh a, [y0]
+ld c, a ; y = y0
+ldh a, [x0]
+ld b, a ; x = x0, finaly ready for loop
+: push bc ; start of loop
+call DrawPixel
+pop bc
+ldh a, [Dif] ; start of if block 
+bit 7, a
+jr z, :+
+ldh a, [Dif+1]
+cp a, 0
+jr z, :+ ; first jump is branching on Dif < 0 second is branching on Dif = 0, if neather are taken then Dif > 0. end of if block check
+inc b ; x = x + 1
+ldh a, [dy]
+ld h, a
+ldh a, [dy+1]
+ld l, a
+ld d, h
+ld e, l
+add hl, de
+call TwosCompHL
+ldh a, [Dif]
+ld d, a
+ldh a, [Dif+1]
+ld e, a
+add hl, de ; Dif = Dif - 2*dx
+: ; end of if block 
+ldh a, [dx]
+ld h, a
+ldh a, [dx+1]
+ld l, a
+ld d, h
+ld e, l
+add hl, de
+ldh a, [Dif]
+ld d, a
+ldh a, [Dif+1]
+ld e, a
+add hl, de ; Dif = Dif + 2*dy
+inc b
+ldh a, [y1]
+cp a, b
+jr !c, :--
 RET
 
 DrawPixel: ;takes input with b and c regesters
 ld d, b
 ld e, c
-rr d
-rr d
-rr d
-rr e
-rr e
-rr e
+srl d
+srl d
+srl d
+srl e
+srl e
+srl e
 ld a, b
 and a, %00000111
 ld b, a
@@ -231,6 +612,8 @@ ld a, c
 and a, %00000111
 ld c, a ;b and c are now the sub-tile co-ords and d and e are the tile co-ords
 ld a, d
+cp a, 0
+jr z, .tileid
 .loop
 dec e
 jr z, .tileid
@@ -243,6 +626,7 @@ rl a
 rl a ;a is now the starting address offset of the tile
 add a, c
 ld d, a ;d is now the address offset of the byte the pixel will go to, and e & c are now free
+rl d
 ld hl, $C020
 call AddtoHl
 ld a, b
@@ -250,6 +634,7 @@ call MaskGen
 xor a, [hl]
 ld [hl], a
 RET
+
 GetFreeTile:
 RET
 
@@ -262,4 +647,4 @@ RET
 End:
 ld hl, $ffff 
 ld [hl], %00000000 
-halt`
+halt
