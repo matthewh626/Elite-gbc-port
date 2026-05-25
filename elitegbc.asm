@@ -64,11 +64,11 @@ ld [hl], $00  ;pallets should be initalised, a buffer will use the first and the
 ld hl, $C000 ;loading the 2 test points
 ld [hl], 0
 inc hl
-ld [hl], 4
+ld [hl], 2
 inc hl
-ld [hl], 8
+ld [hl], 6
 inc hl
-ld [hl], 6 ;points loaded
+ld [hl], 10 ;points loaded
 ld hl, $C000
 call DrawLine
 ld hl, rHDMA1
@@ -214,7 +214,7 @@ jr :-
 : inc b
 jr :--
 : RET
-.angled  	;this uses the vars from the rendering vars section
+.angled  	;this uses the vars from the rendering vars section and b&c for x&y
 ld a, [hld] 	;at this point its loading the values from the input area in memory into the linedrawing working memory ($FF80 - $FF89)
 ldh [y1], a 	;because hl is left pointing to the last value of the input after the previous checks the values are loaded last to first
 ld a, [hld]
@@ -224,19 +224,24 @@ ldh [y0], a
 ld a, [hl]
 ldh [x0], a
 ld a, [hl]
-ldh [x0], a
+ldh [x0], a ;points loaded into render mem
 ldh a, [x1]
 ld b, a
 ldh a, [x0]
 sub b
-ld b, a
+jr !c, :+
+call TwosCompA
+: ld b, a ;b = abs(x1 - x0)
 ldh a, [y1]
 ld c, a
 ldh a, [y0]
 sub c
-sub b ;the C flag now contain abs(y1 - y0) < abs(x1 - x0)
-;ccf
-jp c, .steep
+jr !c, :+
+call TwosCompA
+: ld c, a ;c = abs(y1 - y0)
+ld a, b
+sub c ;the C flag now contain abs(y1 - y0) < abs(x1 - x0)
+jp c, .steep 
 
 .shallow:
 ldh a, [y1]
@@ -312,7 +317,11 @@ ldh a, [Dif]
 ld e, a
 ldh a, [Dif+1]
 ld d, a
-add hl, de ; Dif = Dif - 2*dx
+add hl, de ; hl = Dif - 2*dx
+ld a, l
+ldh [Dif], a
+ld a, h
+ldh [Dif+1], a
 : ; end of if block 
 ldh a, [dy]
 ld l, a
@@ -325,7 +334,11 @@ ldh a, [Dif]
 ld e, a
 ldh a, [Dif+1]
 ld d, a
-add hl, de ; Dif = Dif + 2*dy
+add hl, de ; hl = Dif + 2*dy
+ld a, l
+ldh [Dif], a
+ld a, h
+ldh [Dif+1], a
 inc b
 ldh a, [x1]
 cp a, b
@@ -431,10 +444,10 @@ jr !c, :---
 RET
 
 .steep:
-ldh a, [x1]
-ld hl, x0
+ldh a, [x0]
+ld hl, x1
 cp a, [hl] 
-jp c, .shallowpos
+jp c, .steeppos
 
 .steepneg
 ldh a, [x1] 
@@ -446,9 +459,9 @@ ld l, a
 call TwosCompHL
 add hl, bc
 call TwosCompHL
-ld a, h
-ldh [dy], a
 ld a, l
+ldh [dy], a
+ld a, h
 ldh [dy+1], a ; dy = y1 - y0
 ldh a, [x1] 
 ld b, 0
@@ -458,9 +471,9 @@ ld h, 0
 ld l, a
 call TwosCompHL
 add hl, bc
-ld a, h
-ldh [dx], a
 ld a, l
+ldh [dx], a
+ld a, h
 ldh [dx+1], a ; dx = x1 - x0
 ld b, h
 ld c, l
@@ -468,14 +481,14 @@ add hl, bc ; hl = 2*dx
 ld b, h
 ld c, l
 ldh a, [dx]
-ld h, a
-ldh a, [dx+1]
 ld l, a
+ldh a, [dx+1]
+ld h, a
 call TwosCompHL ; hl = -dx, bc = 2*dx
 add hl, bc
-ld a, h
-ldh [Dif], a
 ld a, l
+ldh [Dif], a
+ld a, h
 ldh [Dif+1], a ; Dif = 2*dx - dx
 ldh a, [y0]
 ld c, a ; y = y0
@@ -504,7 +517,11 @@ ldh a, [Dif]
 ld d, a
 ldh a, [Dif+1]
 ld e, a
-add hl, de ; Dif = Dif - 2*dx
+add hl, de
+ld a, l
+ldh [Dif], a
+ld a, h
+ldh [Dif+1], a; Dif = Dif - 2*dx
 : ; end of if block 
 ldh a, [dx]
 ld h, a
@@ -514,10 +531,14 @@ ld d, h
 ld e, l
 add hl, de
 ldh a, [Dif]
-ld d, a
-ldh a, [Dif+1]
 ld e, a
-add hl, de ; Dif = Dif + 2*dy
+ldh a, [Dif+1]
+ld d, a
+add hl, de 
+ld a, l
+ldh [Dif], a
+ld a, h
+ldh [Dif+1], a; Dif = Dif + 2*dy
 inc b
 ldh a, [y1]
 cp a, b
@@ -533,11 +554,11 @@ ld h, 0
 ld l, a
 call TwosCompHL
 add hl, bc
-ld a, h
-ldh [dy], a
 ld a, l
+ldh [dy], a
+ld a, h
 ldh [dy+1], a ; dy = y1 - y0
-ldh a, [y1] 
+ldh a, [x1] 
 ld b, 0
 ld c, a
 ldh a, [x0]
@@ -545,25 +566,25 @@ ld h, 0
 ld l, a
 call TwosCompHL
 add hl, bc
-ld a, h
-ldh [dx], a
 ld a, l
+ldh [dx], a
+ld a, h
 ldh [dx+1], a ; dx = x1 - x0
 ld b, h
 ld c, l
 add hl, bc ; hl = 2*dx
 ld b, h
 ld c, l
-ldh a, [dx]
-ld h, a
-ldh a, [dx+1]
+ldh a, [dy]
 ld l, a
-call TwosCompHL ; hl = -dx, bc = 2*dx
+ldh a, [dy+1]
+ld h, a
+call TwosCompHL ; hl = -dy, bc = 2*dx
 add hl, bc
-ld a, h
-ldh [Dif], a
 ld a, l
-ldh [Dif+1], a ; Dif = 2*dx - dx
+ldh [Dif], a
+ld a, h
+ldh [Dif+1], a ; Dif = 2*dx - dy
 ldh a, [y0]
 ld c, a ; y = y0
 ldh a, [x0]
@@ -571,43 +592,60 @@ ld b, a ; x = x0, finaly ready for loop
 : push bc ; start of loop
 call DrawPixel
 pop bc
-ldh a, [Dif] ; start of if block 
+ldh a, [Dif+1] ; start of if block 
+cpl
 bit 7, a
 jr z, :+
-ldh a, [Dif+1]
+ldh a, [Dif]
 cp a, 0
 jr z, :+ ; first jump is branching on Dif < 0 second is branching on Dif = 0, if neather are taken then Dif > 0. end of if block check
 inc b ; x = x + 1
-ldh a, [dy]
-ld h, a
-ldh a, [dy+1]
+ldh a, [dx]
 ld l, a
+ldh a, [dx+1]
+ld h, a
 ld d, h
 ld e, l
-add hl, de
+ldh a, [dy]
+ld l, a
+ldh a, [dy+1]
+ld h, a
 call TwosCompHL
+add hl, de ; hl = dx - dy
+ld d, h
+ld e, l
+add hl, de ; hl = 2(dx-dy)
 ldh a, [Dif]
-ld d, a
-ldh a, [Dif+1]
 ld e, a
-add hl, de ; Dif = Dif - 2*dx
+ldh a, [Dif+1]
+ld d, a
+add hl, de 
+ld a, l
+ldh [Dif], a
+ld a, h
+ldh [Dif+1], a ; Dif = Dif + 2(dx-dy)
+jr :++
 : ; end of if block 
 ldh a, [dx]
-ld h, a
-ldh a, [dx+1]
 ld l, a
+ldh a, [dx+1]
+ld h, a
 ld d, h
 ld e, l
 add hl, de
 ldh a, [Dif]
-ld d, a
-ldh a, [Dif+1]
 ld e, a
-add hl, de ; Dif = Dif + 2*dy
-inc b
+ldh a, [Dif+1]
+ld d, a
+add hl, de 
+ld a, l
+ldh [Dif], a
+ld a, h
+ldh [Dif+1], a ; Dif = Dif + 2*dx
+:inc c
 ldh a, [y1]
-cp a, b
-jr !c, :--
+cp a, c
+jr !c, :---
 RET
 
 DrawPixel: ;takes input with b and c regesters
