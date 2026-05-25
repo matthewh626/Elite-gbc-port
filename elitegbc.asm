@@ -302,7 +302,8 @@ cpl
 bit 7, a
 jr z, :+
 ldh a, [Dif]
-cp a, 0
+ld hl, Dif+1
+or a, [hl]
 jr z, :+ ; first jump is branching on Dif < 0 second is branching on Dif = 0, if neather are taken then Dif > 0. end of if block check
 dec c ; y = y - 1
 ldh a, [dx]
@@ -317,11 +318,12 @@ ldh a, [Dif]
 ld e, a
 ldh a, [Dif+1]
 ld d, a
-add hl, de ; hl = Dif - 2*dx
+add hl, de ; hl = Dif - 2*dx 
 ld a, l
 ldh [Dif], a
 ld a, h
-ldh [Dif+1], a
+ldh [Dif+1], a; *now* Dif = Dif - 2*dx
+jr :++
 : ; end of if block 
 ldh a, [dy]
 ld l, a
@@ -329,7 +331,7 @@ ldh a, [dy+1]
 ld h, a
 ld d, h
 ld e, l
-add hl, de
+add hl, de ;hl = 2*dy
 ldh a, [Dif]
 ld e, a
 ldh a, [Dif+1]
@@ -338,11 +340,12 @@ add hl, de ; hl = Dif + 2*dy
 ld a, l
 ldh [Dif], a
 ld a, h
-ldh [Dif+1], a
+ldh [Dif+1], a; *now* Dif = Dif + 2*dy
+:
 inc b
 ldh a, [x1]
 cp a, b
-jr !c, :--
+jr !c, :---
 RET
 
 .shallowpos
@@ -450,15 +453,14 @@ cp a, [hl]
 jp c, .steeppos
 
 .steepneg
-ldh a, [x1] 
+ldh a, [y1] 
 ld b, 0
 ld c, a
-ldh a, [y1]
+ldh a, [y0]
 ld h, 0
 ld l, a
 call TwosCompHL
 add hl, bc
-call TwosCompHL
 ld a, l
 ldh [dy], a
 ld a, h
@@ -471,6 +473,7 @@ ld h, 0
 ld l, a
 call TwosCompHL
 add hl, bc
+call TwosCompHL
 ld a, l
 ldh [dx], a
 ld a, h
@@ -480,16 +483,16 @@ ld c, l
 add hl, bc ; hl = 2*dx
 ld b, h
 ld c, l
-ldh a, [dx]
+ldh a, [dy]
 ld l, a
-ldh a, [dx+1]
+ldh a, [dy+1]
 ld h, a
-call TwosCompHL ; hl = -dx, bc = 2*dx
+call TwosCompHL ; hl = -dy, bc = 2*dx
 add hl, bc
 ld a, l
 ldh [Dif], a
 ld a, h
-ldh [Dif+1], a ; Dif = 2*dx - dx
+ldh [Dif+1], a ; Dif = 2*dx - dy
 ldh a, [y0]
 ld c, a ; y = y0
 ldh a, [x0]
@@ -497,36 +500,44 @@ ld b, a ; x = x0, finaly ready for loop
 : push bc ; start of loop
 call DrawPixel
 pop bc
-ldh a, [Dif] ; start of if block 
+ldh a, [Dif+1] ; start of if block 
 cpl
 bit 7, a
 jr z, :+
-ldh a, [Dif+1]
+ldh a, [Dif]
 cp a, 0
 jr z, :+ ; first jump is branching on Dif < 0 second is branching on Dif = 0, if neather are taken then Dif > 0. end of if block check
 dec b ; x = x - 1
-ldh a, [dy]
-ld h, a
-ldh a, [dy+1]
+ldh a, [dx]
 ld l, a
+ldh a, [dx+1]
+ld h, a
 ld d, h
 ld e, l
-add hl, de
+ldh a, [dy]
+ld l, a
+ldh a, [dy+1]
+ld h, a
 call TwosCompHL
+add hl, de ; hl = dx - dy
+ld d, h
+ld e, l
+add hl, de ; hl = 2(dx-dy)
 ldh a, [Dif]
-ld d, a
-ldh a, [Dif+1]
 ld e, a
-add hl, de
+ldh a, [Dif+1]
+ld d, a
+add hl, de 
 ld a, l
 ldh [Dif], a
 ld a, h
-ldh [Dif+1], a; Dif = Dif - 2*dx
+ldh [Dif+1], a ; Dif = Dif + 2(dx-dy)
+jr :++
 : ; end of if block 
 ldh a, [dx]
-ld h, a
-ldh a, [dx+1]
 ld l, a
+ldh a, [dx+1]
+ld h, a
 ld d, h
 ld e, l
 add hl, de
@@ -538,11 +549,11 @@ add hl, de
 ld a, l
 ldh [Dif], a
 ld a, h
-ldh [Dif+1], a; Dif = Dif + 2*dy
-inc b
+ldh [Dif+1], a ; Dif = Dif + 2*dx
+:inc c
 ldh a, [y1]
-cp a, b
-jr !c, :--
+cp a, c
+jr !c, :---
 RET
 
 .steeppos
