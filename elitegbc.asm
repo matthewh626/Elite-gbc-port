@@ -61,14 +61,14 @@ ld [hl], $0c
 ld [hl], $07
 ld [hl], $00
 ld [hl], $00  ;pallets should be initalised, a buffer will use the first and the b pallet will use the second
-ld hl, $C000 ;loading the 2 test points
+ld hl, $C000 ;loading the 2 test points, x0 < x1 must be true
 ld [hl], 0
 inc hl
-ld [hl], 2
+ld [hl], 0
 inc hl
-ld [hl], 6
+ld [hl], 10
 inc hl
-ld [hl], 10 ;points loaded
+ld [hl], 5 ;points loaded
 ld hl, $C000
 call DrawLine
 ld hl, rHDMA1
@@ -145,6 +145,8 @@ inc a
 RET
 
 SECTION "rendering vars", HRAM
+;rB = x
+;rC = y
 x0:: db
 y0:: db
 x1:: db
@@ -242,14 +244,53 @@ call TwosCompA
 ld a, b
 sub c ;the C flag now contain abs(y1 - y0) < abs(x1 - x0)
 jp c, .steep 
+jp !z, .shallow 
+
+.diagonal:
+ldh a, [y0]
+ld hl, y1
+cp a, [hl]
+jr !c, .diagonaldown
+
+.diagonalup:
+ld c, a
+ldh a, [x0]
+ld b, a
+ldh a, [x1]
+ld d, a
+:push bc
+push de
+call DrawPixel
+pop de
+pop bc
+inc b
+inc c
+ld a, b
+cp a, d
+jr !z, :-
+call DrawPixel
+RET
+
+.diagonaldown:
+ld c, a
+ldh a, [x0]
+ld b, a
+ldh a, [x1]
+ld d, a
+:push bc
+push de
+call DrawPixel
+pop de
+pop bc
+inc b
+dec c
+ld a, b
+cp a, d
+jr !z, :-
+call DrawPixel
+RET
 
 .shallow:
-ldh a, [y1]
-ld hl, y0
-cp a, [hl] 
-jp !c, .shallowpos
-
-.shallowneg
 ldh a, [x1] 
 ld b, 0
 ld c, a
@@ -262,12 +303,17 @@ ld a, l
 ldh [dx], a
 ld a, h
 ldh [dx+1], a ; dx = x1 - x0
-ldh a, [y1] 
+ldh a, [y1]
+ld hl, y0
+cp a, [hl]
 ld b, 0
 ld c, a
 ldh a, [y0]
 ld h, 0
 ld l, a
+jp !c, .shallowpos
+
+.shallowneg
 call TwosCompHL
 add hl, bc
 call TwosCompHL
@@ -310,19 +356,24 @@ ldh a, [dx]
 ld l, a
 ldh a, [dx+1]
 ld h, a
+call TwosCompHL
+ldh a, [dy]
+ld e, a
+ldh a, [dy+1]
+ld d, a
+add hl, de ;hl = dy-dx
 ld d, h
 ld e, l
-add hl, de
-call TwosCompHL
+add hl, de ;hl = 2(dy-dx)
 ldh a, [Dif]
 ld e, a
 ldh a, [Dif+1]
 ld d, a
-add hl, de ; hl = Dif - 2*dx 
+add hl, de ; hl = Dif + 2(dy - dx)
 ld a, l
 ldh [Dif], a
 ld a, h
-ldh [Dif+1], a; *now* Dif = Dif - 2*dx
+ldh [Dif+1], a; *now* Dif = Dif + 2(dy - dx)
 jr :++
 : ; end of if block 
 ldh a, [dy]
@@ -349,24 +400,6 @@ jr !c, :---
 RET
 
 .shallowpos
-ldh a, [x1] 
-ld b, 0
-ld c, a
-ldh a, [x0]
-ld h, 0
-ld l, a
-call TwosCompHL
-add hl, bc
-ld a, l
-ldh [dx], a
-ld a, h
-ldh [dx+1], a ; dx = x1 - x0
-ldh a, [y1] 
-ld b, 0
-ld c, a
-ldh a, [y0]
-ld h, 0
-ld l, a
 call TwosCompHL
 add hl, bc
 ld a, l
@@ -408,19 +441,24 @@ ldh a, [dx]
 ld l, a
 ldh a, [dx+1]
 ld h, a
+call TwosCompHL
+ldh a, [dy]
+ld e, a
+ldh a, [dy+1]
+ld d, a
+add hl, de ;hl = dy-dx
 ld d, h
 ld e, l
-add hl, de
-call TwosCompHL
+add hl, de ;hl = 2(dy-dx)
 ldh a, [Dif]
 ld e, a
 ldh a, [Dif+1]
 ld d, a
-add hl, de ; hl = Dif - 2*dx 
+add hl, de ; hl = Dif + 2(dy - dx)
 ld a, l
 ldh [Dif], a
 ld a, h
-ldh [Dif+1], a; *now* Dif = Dif - 2*dx
+ldh [Dif+1], a; *now* Dif = Dif + 2(dy - dx)
 jr :++
 : ; end of if block 
 ldh a, [dy]
@@ -450,15 +488,15 @@ RET
 ldh a, [x0]
 ld hl, x1
 cp a, [hl] 
-jp c, .steeppos
-
-.steepneg
 ldh a, [y1] 
 ld b, 0
 ld c, a
 ldh a, [y0]
 ld h, 0
 ld l, a
+jp c, .steeppos
+
+.steepneg
 call TwosCompHL
 add hl, bc
 ld a, l
@@ -492,7 +530,7 @@ add hl, bc
 ld a, l
 ldh [Dif], a
 ld a, h
-ldh [Dif+1], a ; Dif = 2*dx - dy
+ldh [Dif+1], a ; Dif = 2*dx - dy, what? no, that is compleatly wrong
 ldh a, [y0]
 ld c, a ; y = y0
 ldh a, [x0]
@@ -557,12 +595,6 @@ jr !c, :---
 RET
 
 .steeppos
-ldh a, [y1] 
-ld b, 0
-ld c, a
-ldh a, [y0]
-ld h, 0
-ld l, a
 call TwosCompHL
 add hl, bc
 ld a, l
