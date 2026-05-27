@@ -88,7 +88,7 @@ psudo code for the PixelDrawer;
 	DrawPixel(byte x, byte y){
 
 	for (byte b in tileList){
-		if (b = $ff){ break )
+		if (b = $ff){ break }
 		freeTile ++
 	}
 
@@ -106,7 +106,7 @@ psudo code for the PixelDrawer;
 	
 	bit 0, pixOffset
 	jr z,  :+
-	pixOffset = pixOffset - 17
+	pixOffset = pixOffset - 15
 	:
 	
 	tileData[pixOffset] = tileData[pixOffset] XOR pixX
@@ -123,5 +123,5 @@ for every second tile entry the same tile list will have to be used , tilePos AN
 	remaining time. this is the worse case scanario where the entire viewport of tiles must be changed out between frames, if this works it means the engine could render at a full 60 FPS, if the
 	graphics buffer can be populated in time, this may require near constant double speed opperation but would be very impressive if successful (if i do say so myself)
 ok the snippet of assembly added to the psudo code along with doubling the address offset beforehand should produce the propper interleaving of the tiles data such that the the pallet buffering methods 
-	above should be able to selectivly render the indivdual tiles from each pair as based on the BG attrutubte map entries, tiles with odd entries on the tileList will use their own tile id and the 
-	normal pallet while the even numbers will use the tile ID of the entry before and the alternate pallet
+	above should be able to selectivly render the indivdual tiles from each pair as based on the BG attrutubte map entries, tiles with non-odd (this means 0 is included) entries on the tileList will
+	use their own tile id and the normal pallet while the odd numbers will use the tile ID of the entry before and the alternate pallet
