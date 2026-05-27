@@ -49,6 +49,7 @@ $C000-$C01F test point list, each point is 2 bytes 1 for x and one for y. lines 
 $FF80-$FF86 line draw working memory
 $C020 graphics buffer
 
+ignore these 3 lines, newer implementation below the line plotter notes
 alternate buffering method, could also use bg pallets to handle the buffering which would free up $8800-$97E8 on bank 1 this room could be used for more detailed tile sets for the window which gives more room for both the hud and menus, which could increase quality and allow for improvements like sub tile lettering to allow for more compact text and more text on screen.
 
 for the line drawing ill use the background cordiates, as a test im going to make a table of lines at the begining of Wram and try and render them to the backgound, then ill try to animate it a bit by moving the points around.
@@ -75,3 +76,43 @@ when after an unknown amount of time all the data nessary for the frame is loade
 	secondly the SCY regester is moved to the other tile map area, selecting the tile map data that is to be used
 
 the idea behind this is that it compleatly avoids race conditions and allows graphics to be rendered at dynamic sub-refresh rate frame rates,
+
+im going to rebuild the pixel drawer now that i have a working version of the line plotter, im going to base this off the way the NES version handles its tile data, the Wram graphics buffer will have;
+	a byte array of 240 called tileList, a subset of this starting from the lower address side and ending with an $FF terminator will describe the tiles on the screen with pixles drawn to them
+		the entries in this array will contain the "position" the tile should go on the screen which will be the linear index of the 18x12 area of the BG map that the 3D viewport will see these will be
+		implicitly matched to the tiles data in their ordering so array[N] will hold the position that tile N of the wram buffer should go on the BG map,
+		so the BG map value at position array[N] will be set to N+1
+	a tile (8 Bytes) array tileData of 240 which will simply be the tile data, this array will get coppied as is into the tile data area in vram, this will have a special blank tile in position 0
+
+psudo code for the PixelDrawer;
+	DrawPixel(byte x, byte y){
+
+	for (byte b in tileList){
+		if (b = $ff){ break )
+		freeTile ++
+	}
+
+	tileX = x >> 3
+	tileY = y >> 3
+	tilePos = tileX + 18(tileY)
+
+	tileList[freeTile] = tilePos
+	tileList[freeTile + 1] = $FF
+
+	pixX = x AND &00000111
+	pixY = y AND &00000111
+	pixX = maskGen(pixX)
+	pixPos = (tilePos*8) + pixY
+	tileData[pixPos] = tileData[pixpos] XOR pixX
+
+	}
+	
+this leaves a small problem, bitdepth, this generates a buffer of tiles and tile locations for 1-bitdepth 8x8 tiles but the PPU is expecting 2-bit depth 8x8 tiles, meaning that either this buffer would
+	have to double in size with half of it being essentualy padding, or some method of getting the PPU to use the lower bit depth tile data is needed, if we continue to leverage CGB features we can use
+	the BG attrutubte map, alogh with rotations of tiles this gives us access to tile spesific colour palets, this lets us hald the tile data storage and transfer size at the expence of multiplying the
+	tile map transfer work by about 1.5 (doubling every second entry). given that the tile data is 16 times the size of the tile map data under the padding method, this seems like a worthwile tradeoff.
+for every second tile entry the same tile list will have to be used , tilePos AND b11111110 will have to be written to the tile map instead and for the odd numbered entries the BG attribute map will
+	have to be updated to use the alternate pallet. while the pallet switching was previously intended to handle the buffering of the tile data in vram, it will now be used to facalitate (hopefully) the
+	full transfer of an entire viewport of tiles in a single Vblank using 1980 bytes of the 2280 bytes of possable Vblank DMA throughput, with the tile map population (hopefully) fitting in the
+	remaining time. this is the worse case scanario where the entire viewport of tiles must be changed out between frames, if this works it means the engine could render at a full 60 FPS, if the
+	graphics buffer can be populated in time, this may require near constant double speed opperation but would be very impressive if successful (if i do say so myself)
