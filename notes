@@ -8,7 +8,7 @@ this would leave 2 banks of 128 tiles for objects, these could be used for text,
 
 screen map: flight (20x18 tiles)
 
-            <- 18 tiles ->
+            <- 20 tiles ->
 ________________________________________
 |                                      |
 |                                      | ___
@@ -87,14 +87,15 @@ im going to rebuild the pixel drawer now that i have a working version of the li
 psudo code for the PixelDrawer;
 	DrawPixel(byte x, byte y){
 
+	tileX = x >> 3
+	tileY = y >> 3
+	tilePos = tileX + 20(tileY)
+
 	for (byte b in tileList){
+		if (b = tilePos) { break }
 		if (b = $ff){ break }
 		freeTile ++
 	}
-
-	tileX = x >> 3
-	tileY = y >> 3
-	tilePos = tileX + 18(tileY)
 
 	tileList[freeTile] = tilePos
 	tileList[freeTile + 1] = $FF
