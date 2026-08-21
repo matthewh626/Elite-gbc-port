@@ -30,18 +30,9 @@ dec e
 jr !z, :-
 dec d
 jr !z, :-- ;the BG tile map should now have a 18x12 area where each position uses subsequent tile ids
-ld hl, $c000; cleaning up some ram just for development (so i can fucking see whats happening)
-: ld a, 0
-ld [hl+], a
-ld a, h
-cp a, $d0
-jr !z, :-
-ld hl, _HRAM
-: ld a, 0
-ld [hl+], a
-ld a, l
-cp a, $fe
-jr !z, :-
+ld hl, tileList; initalising the tileList to start with the correct "free" value $ff
+ld a, $ff
+ld [hl], a
 ld hl, rBGPI ;initalising the pallet
 ld [hl], %10000000
 ld hl, rBGPD
@@ -61,6 +52,8 @@ ld [hl], $0c
 ld [hl], $07
 ld [hl], $00
 ld [hl], $00  ;pallets should be initalised, a buffer will use the first and the b pallet will use the second
+ld hl, tileList ;this is initalising the end marker in the tileList
+ld [hl], $ff
 ld hl, $C000 ;loading the 2 test points, x0 < x1 must be true
 ld [hl], 0
 inc hl
@@ -154,6 +147,11 @@ y1:: db
 dx:: dw
 dy:: dw
 Dif:: dw
+targetTile:: db
+
+SECTION "graphics buffer", WRAMX , BANK[7]
+tileList:: ds 240     ;these vars are maximaly allocated here, for now i think this is worth it to avoid any possable overflow issues in the worse case scanario
+tileData:: ds 240 * 8
 
 SECTION "rendering", ROM0
 
@@ -692,48 +690,73 @@ jr !c, :---
 RET
 
 DrawPixel: ;takes input with b and c regesters
+ld hl, tileList ;prep for the for loop
+
+
 ld d, b
 ld e, c
 srl d
 srl d
 srl d
+srl d ;tileX = X >> 4
+
 srl e
 srl e
 srl e
-ld a, b
-and a, %00000111
-ld b, a
-ld a, c
-and a, %00000111
-ld c, a ;b and c are now the sub-tile co-ords and d and e are the tile co-ords
-ld a, d
-cp a, 0
-jr z, .tileid
-.loop
-dec e
-jr z, .tileid
-jr c, .tileid
-add a, 12
-jr .loop
-.tileid ;a is now the tile id
-rl a
-rl a
-rl a ;a is now the starting address offset of the tile
-add a, c
-ld d, a ;d is now the address offset of the byte the pixel will go to, and e & c are now free
-rl d
-ld hl, $C020
+srl e ;tileY = Y >> 4
+
+ld a, e
+add a, a
+add a, a
+add a, e
+add a, a
+add a, a ;tileY = tileY * 20
+add a, d ;tilePos = tileX + (20 * tileY)
+ld e, a ;tilePos stored in e and a (it being in a is used in the for loop below), d free
+
+ld d, 0
+: cp a, [hl]  ;for loop
+jr z, :+
+ld a, $ff
+cp a, [hl]
+jr z, :+
+inc d
+ld a, e
+jr :-
+: ld a, d 
+ldh [targetTile], a ;d and a free
+
+ldh a, [targetTile]
+ld hl, tileList
 call AddtoHl
-ld a, b
+ld a, e 
+ld [hl], a ;tileList[targetTile] = tilePos
+inc hl
+ld [hl], $ff ;tileList[targetTile + 1] = $FF
+
+ld a, %00000111
+and a, b
 call MaskGen
+ld d, a; d = pixX = x AND %00000111
+ld e, c
+ld a, %00000111
+and a, c ; a = pixY = y AND %00000111
+sla e
+sla e
+sla e ; tilePos * 8 done with shifts to preserve a
+add e ; (tilepos * 8) + pixY
+add a ; a = pixOffset = 2((tilepos * 8) + pixY) 
+
+bit 0, a
+jr z,  :+
+sub 15
+:
+
+ld hl, tileData
+call AddtoHl
 xor a, [hl]
-ld [hl], a
-RET
+ld [hl], a ;tileData[pixOffset] = tileData[pixOffset] XOR pixX
 
-GetFreeTile:
-RET
-
-TileManager:
 RET
 
 FrameHandler:
