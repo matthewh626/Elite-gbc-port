@@ -31,8 +31,7 @@ jr !z, :-
 dec d
 jr !z, :-- ;the BG tile map should now have a 18x12 area where each position uses subsequent tile ids
 ld hl, tileList; initalising the tileList to start with the correct "free" value $ff
-ld a, $ff
-ld [hl], a
+ld [hl], $ff
 ld hl, rBGPI ;initalising the pallet
 ld [hl], %10000000
 ld hl, rBGPD
@@ -51,17 +50,17 @@ ld [hl], $00
 ld [hl], $0c
 ld [hl], $07
 ld [hl], $00
-ld [hl], $00  ;pallets should be initalised, a buffer will use the first and the b pallet will use the second
+ld [hl], $00  ;pallets should be initalised, half the tiles will use the first and the other half will use the second
 ld hl, tileList ;this is initalising the end marker in the tileList
 ld [hl], $ff
-ld hl, $C000 ;loading the 2 test points, x0 < x1 must be true
+ld hl, $C000 ;loading the 2 test points, x0 <= x1 must be true
 ld [hl], 0
 inc hl
 ld [hl], 0
 inc hl
-ld [hl], 10
+ld [hl], 20
 inc hl
-ld [hl], 5 ;points loaded
+ld [hl], 10 ;points loaded
 ld hl, $C000
 call DrawLine
 ld hl, rHDMA1
@@ -147,11 +146,10 @@ y1:: db
 dx:: dw
 dy:: dw
 Dif:: dw
-targetTile:: db
 
 SECTION "graphics buffer", WRAMX , BANK[7]
 tileList:: ds 240     ;these vars are maximaly allocated here, for now i think this is worth it to avoid any possable overflow issues in the worse case scanario
-tileData:: ds 240 * 8
+tileData:: ds 120 * 16 ;while this looks like 120 regular tiles, its actualy 240 1bpp tiles interleaved so the pallet based compression can work
 
 SECTION "rendering", ROM0
 
@@ -692,18 +690,16 @@ RET
 DrawPixel: ;takes input with b and c regesters
 ld hl, tileList ;prep for the for loop
 
-
 ld d, b
 ld e, c
+
 srl d
 srl d
-srl d
-srl d ;tileX = X >> 4
+srl d ;tileX = X >> 3
 
 srl e
 srl e
-srl e
-srl e ;tileY = Y >> 4
+srl e ;tileY = Y >> 3
 
 ld a, e
 add a, a
@@ -719,44 +715,66 @@ ld d, 0
 jr z, :+
 ld a, $ff
 cp a, [hl]
-jr z, :+
+jr z, .newtile
 inc d
+inc hl
 ld a, e
 jr :-
-: ld a, d 
-ldh [targetTile], a ;d and a free
+jr :+
 
-ldh a, [targetTile]
-ld hl, tileList
-call AddtoHl
+.newtile 
 ld a, e 
-ld [hl], a ;tileList[targetTile] = tilePos
-inc hl
+ld [hli], a ;tileList[targetTile] = tilePos
 ld [hl], $ff ;tileList[targetTile + 1] = $FF
+bit 0, d
+jr !z, :+
+ld hl, tileData
+ld a, d
+add a
+add a
+add a
+call AddtoHl
+ld a, 0
+ld [hli], a
+ld [hli], a
+ld [hli], a
+ld [hli], a
+ld [hli], a
+ld [hli], a
+ld [hli], a
+ld [hli], a
+ld [hli], a
+ld [hli], a
+ld [hli], a
+ld [hli], a
+ld [hli], a
+ld [hli], a
+ld [hli], a
+ld [hli], a
 
-ld a, %00000111
-and a, b
-call MaskGen
-ld d, a; d = pixX = x AND %00000111
-ld e, c
+:
 ld a, %00000111
 and a, c ; a = pixY = y AND %00000111
-sla e
-sla e
-sla e ; tilePos * 8 done with shifts to preserve a
-add e ; (tilepos * 8) + pixY
+sla d
+sla d ; tilePos * 8 done with shifts to preserve a
+add d ; (tilepos * 8) + pixY
 add a ; a = pixOffset = 2((tilepos * 8) + pixY) 
 
-bit 0, a
+bit 2, d
 jr z,  :+
-sub 15
+sub 7
 :
-
 ld hl, tileData
 call AddtoHl
+ld a, %00000111
+and a, b
+ld e, a
+ld a, 7
+sub e
+call MaskGen
+ld d, a; d = pixX = 7 - (x AND %00000111)
 xor a, [hl]
 ld [hl], a ;tileData[pixOffset] = tileData[pixOffset] XOR pixX
-
 RET
 
 FrameHandler:
